@@ -1,6 +1,7 @@
 from pathlib import Path
 from prefect import flow, get_run_logger
 from prefect.runtime import flow_run
+from prefect.states import Completed
 from prefect.filesystems import LocalFileSystem
 
 from prefect_managedfiletransfer.RCloneConfigSavedInPrefect import (
@@ -102,80 +103,84 @@ async def upload_file_flow(
     else:
         destination_block = destination_block_or_blockname
     result: int | None = None
-    if isinstance(destination_block, ServerWithBasicAuthBlock):
-        sftp_details = destination_block
-        if not sftp_details.isValid():
-            raise ValueError("One or more SFTP server details are missing")
-        logger.info(
-            f"Uploading {pattern_to_upload} to {destination_file} on {sftp_details.host}"
-        )
-        result = await upload_asset(
-            source_folder=source_folder,
-            pattern_to_upload=pattern_to_upload,
-            destination_file=destination_file,
-            destination_type=RemoteConnectionType.SFTP,
-            host=sftp_details.host,
-            port=sftp_details.port,
-            username=sftp_details.username,
-            password=sftp_details.password.get_secret_value(),
-            update_only_if_newer_mode=update_only_if_newer_mode,
-            overwrite=overwrite,
-            mode=mode,
-        )
-    elif isinstance(destination_block, ServerWithPublicKeyAuthBlock):
-        sftp_details_public_key = destination_block
-        if not sftp_details_public_key.is_valid():
-            raise ValueError("One or more SFTP server details are missing")
-        logger.info(
-            f"Uploading {pattern_to_upload} to {destination_file} on {sftp_details_public_key.host} with pub/private keys"
-        )
-        with sftp_details_public_key.get_temp_key_file() as temp_key_file:
+    try:
+        if isinstance(destination_block, ServerWithBasicAuthBlock):
+            sftp_details = destination_block
+            if not sftp_details.isValid():
+                raise ValueError("One or more SFTP server details are missing")
+            logger.info(
+                f"Uploading {pattern_to_upload} to {destination_file} on {sftp_details.host}"
+            )
             result = await upload_asset(
                 source_folder=source_folder,
                 pattern_to_upload=pattern_to_upload,
                 destination_file=destination_file,
                 destination_type=RemoteConnectionType.SFTP,
-                host=sftp_details_public_key.host,
-                port=sftp_details_public_key.port,
-                username=sftp_details_public_key.username,
-                private_key_path=temp_key_file.get_path(),
+                host=sftp_details.host,
+                port=sftp_details.port,
+                username=sftp_details.username,
+                password=sftp_details.password.get_secret_value(),
                 update_only_if_newer_mode=update_only_if_newer_mode,
                 overwrite=overwrite,
                 mode=mode,
             )
-    elif isinstance(destination_block, LocalFileSystem):
-        local_details = destination_block
-        if not local_details.basepath:
-            raise ValueError("LocalFileSystem.basepath details are missing")
-        logger.debug(f"Using basepath from local filesystem: {local_details.basepath}")
-        destination_file = Path(local_details.basepath) / destination_file
-        logger.info(f"Uploading to local filesystem: {destination_file}")
-        result = await upload_asset(
-            source_folder=source_folder,
-            pattern_to_upload=pattern_to_upload,
-            destination_file=destination_file,
-            destination_type=RemoteConnectionType.LOCAL,
-            update_only_if_newer_mode=update_only_if_newer_mode,
-            overwrite=overwrite,
-            mode=mode,
-        )
-    elif isinstance(destination_block, RCloneConfigFileBlock):
-        rclone_details_prefect_block: RCloneConfigFileBlock = destination_block
-        logger.info(
-            f"Uploading {pattern_to_upload} to {destination_file} using rclone block for remote {rclone_details_prefect_block.remote_name}"
-        )
+        elif isinstance(destination_block, ServerWithPublicKeyAuthBlock):
+            sftp_details_public_key = destination_block
+            if not sftp_details_public_key.is_valid():
+                raise ValueError("One or more SFTP server details are missing")
+            logger.info(
+                f"Uploading {pattern_to_upload} to {destination_file} on {sftp_details_public_key.host} with pub/private keys"
+            )
+            with sftp_details_public_key.get_temp_key_file() as temp_key_file:
+                result = await upload_asset(
+                    source_folder=source_folder,
+                    pattern_to_upload=pattern_to_upload,
+                    destination_file=destination_file,
+                    destination_type=RemoteConnectionType.SFTP,
+                    host=sftp_details_public_key.host,
+                    port=sftp_details_public_key.port,
+                    username=sftp_details_public_key.username,
+                    private_key_path=temp_key_file.get_path(),
+                    update_only_if_newer_mode=update_only_if_newer_mode,
+                    overwrite=overwrite,
+                    mode=mode,
+                )
+        elif isinstance(destination_block, LocalFileSystem):
+            local_details = destination_block
+            if not local_details.basepath:
+                raise ValueError("LocalFileSystem.basepath details are missing")
+            logger.debug(f"Using basepath from local filesystem: {local_details.basepath}")
+            destination_file = Path(local_details.basepath) / destination_file
+            logger.info(f"Uploading to local filesystem: {destination_file}")
+            result = await upload_asset(
+                source_folder=source_folder,
+                pattern_to_upload=pattern_to_upload,
+                destination_file=destination_file,
+                destination_type=RemoteConnectionType.LOCAL,
+                update_only_if_newer_mode=update_only_if_newer_mode,
+                overwrite=overwrite,
+                mode=mode,
+            )
+        elif isinstance(destination_block, RCloneConfigFileBlock):
+            rclone_details_prefect_block: RCloneConfigFileBlock = destination_block
+            logger.info(
+                f"Uploading {pattern_to_upload} to {destination_file} using rclone block for remote {rclone_details_prefect_block.remote_name}"
+            )
 
-        result = await upload_asset(
-            source_folder=source_folder,
-            pattern_to_upload=pattern_to_upload,
-            destination_file=destination_file,
-            destination_type=RemoteConnectionType.RCLONE,
-            rclone_config=RCloneConfigSavedInPrefect(rclone_details_prefect_block),
-            update_only_if_newer_mode=update_only_if_newer_mode,
-            overwrite=overwrite,
-            mode=mode,
-            logger=logger,
-        )
+            result = await upload_asset(
+                source_folder=source_folder,
+                pattern_to_upload=pattern_to_upload,
+                destination_file=destination_file,
+                destination_type=RemoteConnectionType.RCLONE,
+                rclone_config=RCloneConfigSavedInPrefect(rclone_details_prefect_block),
+                update_only_if_newer_mode=update_only_if_newer_mode,
+                overwrite=overwrite,
+                mode=mode,
+                logger=logger,
+            )
+    except FileNotFoundError as e:
+        logger.info(f"No files found to upload: {e}")
+        return Completed(message="Zero files found", name="Skipped")
 
     if result is None:
         raise ValueError("Destination details are missing")

@@ -1,6 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from prefect.runtime import flow_run
+from prefect.states import Completed
 from prefect_managedfiletransfer.transfer_files_flow import transfer_files_flow
 from prefect_managedfiletransfer.AssetDownloadResult import AssetDownloadResult
 from prefect_managedfiletransfer.FileToFolderMapping import FileToFolderMapping
@@ -112,7 +113,7 @@ async def unpack_files_flow(
         )
     logger = get_run_logger()
 
-    download_results: list[AssetDownloadResult] = await transfer_files_flow.fn(
+    download_results = await transfer_files_flow.fn(
         source_block=source_block,
         destination_block=destination_block,
         source_file_matchers=source_file_matchers,
@@ -125,9 +126,14 @@ async def unpack_files_flow(
         check_for_space=True,
     )
 
+    # Handle case where transfer_files_flow returns a Completed state (zero files)
+    if isinstance(download_results, Completed):
+        logger.info("No files downloaded, nothing to unpack.")
+        return Completed(message="Zero files found", name="Skipped")
+
     if not download_results:
         logger.info("No files downloaded, nothing to unpack.")
-        return [], []
+        return Completed(message="Zero files found", name="Skipped")
 
     # get the list of file extensions we know how to unpack
     unpackable_extensions = [

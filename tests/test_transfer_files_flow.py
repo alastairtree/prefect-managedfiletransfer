@@ -1,5 +1,6 @@
 from prefect_managedfiletransfer import FileMatcher, TransferType, transfer_files_flow
 from prefect.filesystems import LocalFileSystem
+from prefect.states import State
 import pytest
 
 pytest_plugins = ("pytest_asyncio",)
@@ -79,7 +80,12 @@ async def test_transfer_files_flow_can_ignore_files(
         mode=TransferType.Move,
     )
 
-    assert len(result) == 0
+    # When a flow returns a State, Prefect uses it as the final state
+    # The actual return value might be None, so we check if it's either None or a State
+    assert result is None or isinstance(result, State), "Should return None or State for zero files"
+    if isinstance(result, State):
+        assert result.name == "Skipped", "State should be named 'Skipped'"
+        assert result.message == "Zero files found", "Message should be 'Zero files found'"
     assert temp_file_path.exists(), "File should NOT be moved from source folder"
     assert not temp_folder_path.joinpath(temp_file_path.name).exists(), (
         "File should not be moved to destination folder"

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 from prefect.runtime import flow_run
+from prefect.states import Completed
 from prefect_managedfiletransfer import TransferBlockType
 from prefect_managedfiletransfer.list_remote_files_task import list_remote_files_task
 from prefect_managedfiletransfer.FileToFolderMapping import FileToFolderMapping
@@ -130,6 +131,10 @@ async def transfer_files_flow(
             reference_date,
         )
         source_files.extend(files)
+
+    if not source_files:
+        logger.info("Zero files found to transfer")
+        return Completed(message="Zero files found", name="Skipped")
 
     basepath_str = (
         destination_block.basepath if hasattr(destination_block, "basepath") else None
