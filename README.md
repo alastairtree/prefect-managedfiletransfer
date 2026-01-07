@@ -18,7 +18,7 @@ Turn a prefect.io server into a managed file transfer solution. UI and Programat
 
 Using prefect for managed file transfer means retries, logging, multi node and [high availability](https://docs.prefect.io/v3/advanced/self-hosted) come as standard - turning prefect into a reliable enterprise ready file transfer solution. 
 
-This package is not the fastest solution to move files around, but it prioritises reliability and ease of use, making it an excellent choice for replacing both quick cron job copy scripts and enterprise managed file transfer applicances.
+This package is not the fastest solution to move files around, but it prioritises reliability and ease of use, making it an excellent choice for replacing both quick cron job copy scripts and enterprise managed file transfer appliances.
 
 Key features
 
