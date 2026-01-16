@@ -36,16 +36,17 @@ async def delete_asset(
         rclone_config: The rclone config object (for RClone).
     """
 
-    logger.debug(f"Deleting file {file.path} from {remote_type.name} remote")
+    if file is None or (hasattr(file, 'path') and file.path is None):
+        logger.critical("File to delete cannot be None or empty")
+        raise ValueError("File to delete cannot be None or empty")
 
     if rclone_config_file is not None and rclone_config is not None:
         raise ValueError(
             "rclone_config_file and rclone_config cannot be used at the same time"
         )
 
-    if file is None or file.path is None:
-        logger.critical("File to delete cannot be None or empty")
-        raise ValueError("File to delete cannot be None or empty")
+    remote_type_name = remote_type.name if hasattr(remote_type, 'name') else str(remote_type)
+    logger.debug(f"Deleting file {file.path} from {remote_type_name} remote")
 
     match remote_type:
         case RemoteConnectionType.LOCAL:
