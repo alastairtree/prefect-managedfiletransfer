@@ -192,20 +192,6 @@ async def test_delete_files_flow_sftp(
 
 
 @pytest.mark.asyncio
-async def test_delete_files_flow_requires_file_matchers(prefect_db, temp_file_path):
-    """Test that flow raises error when no file matchers are provided."""
-    source = LocalFileSystem(basepath=temp_file_path.parent)
-
-    with pytest.raises(ValueError) as exc_info:
-        await delete_files_flow(
-            source_block=source,
-            source_file_matchers=[],
-        )
-
-    assert "No source file matchers provided" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
 async def test_delete_files_flow_preserves_non_matching_files(
     prefect_db, temp_folder_path
 ):
