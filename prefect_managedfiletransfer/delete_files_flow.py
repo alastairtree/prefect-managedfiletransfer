@@ -18,10 +18,9 @@ from prefect_managedfiletransfer.delete_file_task import delete_file_task
 from prefect_managedfiletransfer.constants import CONSTANTS
 from prefect_managedfiletransfer.RemoteConnectionType import RemoteConnectionType
 from prefect_managedfiletransfer.RemoteAsset import RemoteAsset
-from prefect import flow
-from prefect.filesystems import LocalFileSystem
+from prefect import State, flow
 import logging
-
+from prefect.states import Completed
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ async def delete_files_flow(
     source_block: TransferBlockType,
     source_file_matchers: list[FileMatcher] = [FileMatcher()],
     reference_date: datetime | None = None,
-) -> list:
+) -> list[Path] | State:
     """
     Deletes files from a source based on the provided matchers.
 
@@ -100,7 +99,13 @@ async def delete_files_flow(
         )
         deleted.append(deleted_file)
 
-    logger.info(f"Delete completed. {len(deleted)} files processed")
+    logger.info(f"Delete completed. {len(deleted)} files removed")
+
+    if len(deleted) == 0:
+        return Completed(
+            message="No files to delete",
+            name=CONSTANTS.SKIPPED_STATE_NAME,
+        )
 
     return deleted
 
@@ -121,6 +126,4 @@ def map_block_to_remote_type(source_block):
 # $ PREFECT_LOGGING_EXTRA_LOGGERS=prefect_managedfiletransfer PREFECT_LOGGING_LEVEL=DEBUG python delete_files_flow.py
 
 if __name__ == "__main__":
-    delete_files_flow.serve(
-        name=CONSTANTS.DEPLOYMENT_NAMES.DELETE_FILES, tags=["dev"]
-    )
+    delete_files_flow.serve(name=CONSTANTS.DEPLOYMENT_NAMES.DELETE_FILES, tags=["dev"])

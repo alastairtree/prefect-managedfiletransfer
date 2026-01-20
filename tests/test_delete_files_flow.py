@@ -2,6 +2,7 @@
 """Tests for `delete_files_flow` package."""
 # pylint: disable=redefined-outer-name
 
+from prefect import State
 from prefect_managedfiletransfer import FileMatcher, delete_files_flow
 from prefect_managedfiletransfer.ServerWithBasicAuthBlock import (
     ServerWithBasicAuthBlock,
@@ -9,15 +10,12 @@ from prefect_managedfiletransfer.ServerWithBasicAuthBlock import (
 from prefect.filesystems import LocalFileSystem
 import pytest
 from pathlib import Path
-import tempfile
 
 pytest_plugins = ("pytest_asyncio",)
 
 
 @pytest.mark.asyncio
-async def test_delete_files_flow_can_delete_local_file(
-    prefect_db, temp_file_path
-):
+async def test_delete_files_flow_can_delete_local_file(prefect_db, temp_file_path):
     """Test deleting a single local file."""
     source = LocalFileSystem(basepath=temp_file_path.parent)
 
@@ -34,6 +32,7 @@ async def test_delete_files_flow_can_delete_local_file(
         ],
     )
 
+    assert isinstance(result, list)
     assert len(result) == 1
     assert not temp_file_path.exists(), "File should be deleted from source folder"
 
@@ -69,6 +68,7 @@ async def test_delete_files_flow_can_delete_multiple_local_files(
         ],
     )
 
+    assert isinstance(result, list)
     assert len(result) == 3
     assert not file1.exists(), "File 1 should be deleted"
     assert not file2.exists(), "File 2 should be deleted"
@@ -90,16 +90,18 @@ async def test_delete_files_flow_with_no_matching_files(
                 pattern_to_match="nonexistent-file.txt",
             )
         ],
+        return_state=True,
     )
 
-    assert len(result) == 0
+    assert isinstance(result, State)
+    assert result.is_completed()
+    assert result.name == "Skipped"
+
     assert temp_file_path.exists(), "Original file should still exist"
 
 
 @pytest.mark.asyncio
-async def test_delete_files_flow_with_multiple_matchers(
-    prefect_db, temp_folder_path
-):
+async def test_delete_files_flow_with_multiple_matchers(prefect_db, temp_folder_path):
     """Test deleting files using multiple matchers."""
     # Create test files
     file1 = temp_folder_path / "test1.txt"
@@ -131,6 +133,7 @@ async def test_delete_files_flow_with_multiple_matchers(
         ],
     )
 
+    assert isinstance(result, list)
     assert len(result) == 3
     assert not file1.exists(), "Test file 1 should be deleted"
     assert not file2.exists(), "CSV file should be deleted"
@@ -182,6 +185,7 @@ async def test_delete_files_flow_sftp(
         ],
     )
 
+    assert isinstance(result, list)
     assert len(result) == 2
 
     # Verify files were deleted
@@ -219,6 +223,7 @@ async def test_delete_files_flow_preserves_non_matching_files(
         ],
     )
 
+    assert isinstance(result, list)
     assert len(result) == 1
     assert not file_to_delete.exists(), "Matching file should be deleted"
     assert file_to_keep.exists(), "Non-matching file should be preserved"

@@ -185,4 +185,5 @@ pre-commit install
 ```
 ./build.sh
 ```
-8. `git commit`, `git push`, and create a pull request
+9. Use `./run_local.sh` to deploy a local prefect server, worker, and UI to test your changes
+10. `git commit`, `git push`, and create a pull request

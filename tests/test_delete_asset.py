@@ -52,7 +52,9 @@ async def test_delete_asset_local_file_that_does_not_exist(temp_file_path, caplo
 
 
 @pytest.mark.asyncio
-async def test_delete_asset_sftp_file(sftp_server, temp_file_path, sftp_creds, sftp_client):
+async def test_delete_asset_sftp_file(
+    sftp_server, temp_file_path, sftp_creds, sftp_client
+):
     """Test deleting a file via SFTP."""
     # Set up: upload a file to SFTP server
     source_path = Path("upload/") / "test_delete.txt"
