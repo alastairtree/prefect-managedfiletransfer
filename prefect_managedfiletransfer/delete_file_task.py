@@ -5,6 +5,7 @@ from prefect_managedfiletransfer.RCloneConfigSavedInPrefect import (
 )
 from prefect_managedfiletransfer.RemoteConnectionType import RemoteConnectionType
 from prefect_managedfiletransfer.delete_asset import delete_asset
+from prefect_managedfiletransfer.password_utils import get_password_value
 from prefect import task
 from contextlib import nullcontext
 import logging
@@ -53,7 +54,9 @@ async def delete_file_task(
                 source_block.username if hasattr(source_block, "username") else None
             ),
             password=(
-                source_block.password if hasattr(source_block, "password") else None
+                get_password_value(source_block.password)
+                if hasattr(source_block, "password")
+                else None
             ),
             private_key_path=(temp_key_file.get_path() if temp_key_file else None),
             rclone_config=rclone_config,
